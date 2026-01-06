@@ -38,15 +38,27 @@ function LiveSignals() {
 
 function ConfigForm() {
   const [assets, setAssets] = useState<string[]>(['BTCUSDT', 'ETHUSDT'])
-  const [mode, setMode] = useState('paper')
+  const [mode, setMode] = useState<'paper' | 'testnet' | 'live'>('paper')
+  const [apiKey, setApiKey] = useState('')
+  const [apiSecret, setApiSecret] = useState('')
+  const [backtestMinutes, setBacktestMinutes] = useState<number>(60)
+  const [risk, setRisk] = useState<number>(1)
+  const [orderSizeMode, setOrderSizeMode] = useState<'risk' | 'fixed' | 'atr'>('risk')
+  const [orderSizeValue, setOrderSizeValue] = useState<number>(0)
 
   const payload = useMemo(
     () => ({
       assets: assets.map((symbol) => ({ symbol, enabled: true, timeframes: ['1m', '5m'], strategies: {} })),
-      risk: { risk_per_trade: 1 },
-      execution: { mode },
+      risk: { risk_per_trade: risk, order_size_mode: orderSizeMode, order_size_value: orderSizeValue },
+      execution: {
+        mode,
+        broker: mode === 'live' ? 'binance_live' : mode === 'testnet' ? 'binance_testnet' : 'paper',
+        api_key: apiKey || undefined,
+        api_secret: apiSecret || undefined,
+        backtest_duration_minutes: mode === 'testnet' ? backtestMinutes : undefined,
+      },
     }),
-    [assets, mode],
+    [assets, mode, apiKey, apiSecret, backtestMinutes, risk, orderSizeMode, orderSizeValue],
   )
 
   const handleSubmit = async () => {
@@ -59,12 +71,81 @@ function ConfigForm() {
         <label className="text-sm text-slate-300">Modo</label>
         <select
           value={mode}
-          onChange={(e) => setMode(e.target.value)}
+          onChange={(e) => setMode(e.target.value as typeof mode)}
           className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
         >
           <option value="paper">Paper</option>
           <option value="testnet">Testnet</option>
+          <option value="live">Live</option>
         </select>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-sm text-slate-300">Binance API Key</label>
+          <input
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
+            placeholder="sua api key"
+          />
+        </div>
+        <div>
+          <label className="text-sm text-slate-300">Binance API Secret</label>
+          <input
+            type="password"
+            value={apiSecret}
+            onChange={(e) => setApiSecret(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
+            placeholder="seu api secret"
+          />
+        </div>
+      </div>
+      {mode === 'testnet' && (
+        <div>
+          <label className="text-sm text-slate-300">Duração do backtest (minutos)</label>
+          <input
+            type="number"
+            min={1}
+            value={backtestMinutes}
+            onChange={(e) => setBacktestMinutes(parseInt(e.target.value || '0', 10))}
+            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
+          />
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-sm text-slate-300">Risco por trade (%)</label>
+          <input
+            type="number"
+            min={0}
+            step="0.1"
+            value={risk}
+            onChange={(e) => setRisk(parseFloat(e.target.value || '0'))}
+            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
+          />
+        </div>
+        <div>
+          <label className="text-sm text-slate-300">Order size</label>
+          <div className="flex gap-2">
+            <select
+              value={orderSizeMode}
+              onChange={(e) => setOrderSizeMode(e.target.value as typeof orderSizeMode)}
+              className="mt-1 w-1/2 rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
+            >
+              <option value="risk">Por risco</option>
+              <option value="fixed">Fixo</option>
+              <option value="atr">ATR</option>
+            </select>
+            <input
+              type="number"
+              min={0}
+              value={orderSizeValue}
+              onChange={(e) => setOrderSizeValue(parseFloat(e.target.value || '0'))}
+              className="mt-1 w-1/2 rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-100"
+              placeholder="valor"
+            />
+          </div>
+        </div>
       </div>
       <div>
         <label className="text-sm text-slate-300">Ativos</label>
@@ -170,7 +251,9 @@ export default function App() {
             <h1 className="text-xl font-bold text-white">Agente IA Dashboard</h1>
             <p className="text-sm text-slate-400">Monitoramento, configuração e métricas em tempo real</p>
           </div>
-          <div className="rounded-full bg-emerald-500 px-3 py-1 text-sm font-semibold text-emerald-900">Paper</div>
+          <div className="rounded-full bg-emerald-500 px-3 py-1 text-sm font-semibold text-emerald-900">
+            Configure modo no card ao lado
+          </div>
         </div>
       </header>
       <main className="mx-auto grid max-w-6xl gap-6 p-6 md:grid-cols-3">

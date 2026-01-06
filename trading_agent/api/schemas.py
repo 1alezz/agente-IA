@@ -33,6 +33,7 @@ class RiskConfig(BaseModel):
     max_position_size: float = 1000.0
     leverage: float | None = None
     order_size_mode: Literal["fixed", "risk", "atr"] = "risk"
+    order_size_value: float | None = None
 
 
 class ExecutionConfig(BaseModel):
@@ -41,7 +42,10 @@ class ExecutionConfig(BaseModel):
     slippage_bps: float = 5
     order_type: Literal["market", "limit"] = "market"
     spread_limit_bps: float = 10
-    broker: Literal["paper", "binance_testnet"] = "paper"
+    broker: Literal["paper", "binance_testnet", "binance_live"] = "paper"
+    api_key: str | None = None
+    api_secret: str | None = None
+    backtest_duration_minutes: int | None = None
 
 
 class AppConfig(BaseModel):

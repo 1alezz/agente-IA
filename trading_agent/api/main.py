@@ -9,7 +9,7 @@ from trading_agent.agent.adaptive import AdaptivePolicy
 from trading_agent.agent.decision import DecisionContext, RuleBasedDecisionEngine
 from trading_agent.api.schemas import AppConfig, AssetConfig, Decision, ExecutionConfig, PerformanceDTO, RiskConfig, TradeDTO
 from trading_agent.data import database
-from trading_agent.execution.binance import BinanceCredentials, BinanceTestnetBroker
+from trading_agent.execution.binance import BinanceBroker, BinanceCredentials
 from trading_agent.execution.broker import BrokerInterface, PaperBroker
 from trading_agent.execution.position_manager import PositionManager
 from trading_agent.services.stream import stream_manager
@@ -32,9 +32,10 @@ current_config: AppConfig = _default_config()
 
 
 def build_broker(exec_config: ExecutionConfig) -> BrokerInterface:
-    if exec_config.broker == "binance_testnet" or exec_config.mode == "testnet":
-        creds = BinanceCredentials.from_env()
-        return BinanceTestnetBroker(creds)
+    if exec_config.broker.startswith("binance") or exec_config.mode in {"testnet", "live"}:
+        creds = BinanceCredentials.from_config(exec_config.api_key, exec_config.api_secret)
+        sandbox = exec_config.broker == "binance_testnet" or exec_config.mode == "testnet"
+        return BinanceBroker(creds, sandbox=sandbox)
     return PaperBroker()
 
 

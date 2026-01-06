@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List
@@ -18,19 +17,16 @@ class BinanceCredentials:
     api_secret: str
 
     @classmethod
-    def from_env(cls) -> "BinanceCredentials":
-        key = os.getenv("BINANCE_API_KEY")
-        secret = os.getenv("BINANCE_API_SECRET")
-        if not key or not secret:
-            raise ValueError("BINANCE_API_KEY/SECRET não configurados para testnet")
-        return cls(api_key=key, api_secret=secret)
+    def from_config(cls, api_key: str | None, api_secret: str | None) -> "BinanceCredentials":
+        if not api_key or not api_secret:
+            raise ValueError("Credenciais Binance ausentes: informe api_key e api_secret")
+        return cls(api_key=api_key, api_secret=api_secret)
 
 
-class BinanceTestnetBroker(BrokerInterface):
-    """Broker para Binance Futures Testnet usando ccxt."""
+class BinanceBroker(BrokerInterface):
+    """Broker para Binance Futures que pode operar em sandbox (testnet) ou live via ccxt."""
 
-    def __init__(self, creds: BinanceCredentials | None = None) -> None:
-        creds = creds or BinanceCredentials.from_env()
+    def __init__(self, creds: BinanceCredentials, sandbox: bool = True) -> None:
         self.exchange = ccxt.binanceusdm(
             {
                 "apiKey": creds.api_key,
@@ -39,7 +35,7 @@ class BinanceTestnetBroker(BrokerInterface):
                 "options": {"defaultType": "future"},
             }
         )
-        self.exchange.set_sandbox_mode(True)
+        self.exchange.set_sandbox_mode(sandbox)
 
     async def _run(self, fn, *args, **kwargs):
         loop = asyncio.get_event_loop()
@@ -50,7 +46,7 @@ class BinanceTestnetBroker(BrokerInterface):
         side = decision.side.upper()
         symbol = decision.symbol or (decision.signals.get("symbol") if isinstance(decision.signals, dict) else None)
         if not symbol:
-            raise ValueError("Decision precisa conter symbol em decision.symbol para Binance")
+            raise ValueError("Decision precisa conter symbol para Binance")
 
         amount = decision.size or 0.0
         price = decision.entry

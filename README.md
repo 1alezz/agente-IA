@@ -32,9 +32,10 @@ Endpoints principais:
 - `WS /stream` para sinais/posições em tempo real
 
 ### Testnet Binance (ccxt)
-- Exporte credenciais de testnet: `BINANCE_API_KEY` e `BINANCE_API_SECRET`.
-- Envie `PUT /config` com `execution.broker="binance_testnet"` (ou `mode="testnet"`) para trocar o broker para Binance Futures Testnet.
-- O broker usa `ccxt.binanceusdm` em sandbox mode; tamanho/preço vêm do `Decision` (`symbol` e `entry`).
+- O dashboard permite escolher `paper` / `testnet` / `live` e enviar `api_key` / `api_secret` direto para a API (`PUT /config`).
+- Para testnet, escolha `execution.broker="binance_testnet"` (modo é ajustado pelo dashboard automaticamente); para live use `binance_live` (respeite `allow_live`).
+- O broker usa `ccxt.binanceusdm`; em testnet usa sandbox mode, em live desabilita sandbox.
+- Para backtest em modo testnet é possível informar `backtest_duration_minutes` (dashboard exibe o campo quando `testnet` é selecionado).
 
 ## Dashboard
 ```bash
