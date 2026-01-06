@@ -3,13 +3,14 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from fastapi import Depends, FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket
 
 from trading_agent.agent.adaptive import AdaptivePolicy
 from trading_agent.agent.decision import DecisionContext, RuleBasedDecisionEngine
-from trading_agent.api.schemas import AppConfig, Decision, PerformanceDTO, TradeDTO
+from trading_agent.api.schemas import AppConfig, AssetConfig, Decision, ExecutionConfig, PerformanceDTO, RiskConfig, TradeDTO
 from trading_agent.data import database
-from trading_agent.execution.broker import PaperBroker
+from trading_agent.execution.binance import BinanceCredentials, BinanceTestnetBroker
+from trading_agent.execution.broker import BrokerInterface, PaperBroker
 from trading_agent.execution.position_manager import PositionManager
 from trading_agent.services.stream import stream_manager
 from trading_agent.strategy.detectors import Candle
@@ -17,7 +18,27 @@ from trading_agent.strategy.detectors import Candle
 app = FastAPI(title="Agente IA Trading")
 adaptive_policy = AdaptivePolicy()
 rule_engine = RuleBasedDecisionEngine()
-broker = PaperBroker()
+
+
+def _default_config() -> AppConfig:
+    return AppConfig(
+        assets=[AssetConfig(symbol="BTCUSDT", enabled=True, timeframes=["1m", "5m", "15m"])],
+        risk=RiskConfig(),
+        execution=ExecutionConfig(),
+    )
+
+
+current_config: AppConfig = _default_config()
+
+
+def build_broker(exec_config: ExecutionConfig) -> BrokerInterface:
+    if exec_config.broker == "binance_testnet" or exec_config.mode == "testnet":
+        creds = BinanceCredentials.from_env()
+        return BinanceTestnetBroker(creds)
+    return PaperBroker()
+
+
+broker: BrokerInterface = build_broker(current_config.execution)
 position_manager = PositionManager(broker=broker)
 
 
@@ -34,12 +55,16 @@ async def health() -> dict[str, str]:
 
 @app.get("/config")
 async def get_config() -> dict[str, Any]:
-    return {"message": "config fetch placeholder"}
+    return current_config.model_dump()
 
 
 @app.put("/config")
 async def update_config(config: AppConfig) -> dict[str, Any]:
-    return {"message": "config updated", "assets": [a.symbol for a in config.assets]}
+    global current_config, broker, position_manager
+    current_config = config
+    broker = build_broker(config.execution)
+    position_manager = PositionManager(broker=broker)
+    return {"message": "config updated", "assets": [a.symbol for a in config.assets], "broker": config.execution.broker}
 
 
 @app.post("/agent/start")

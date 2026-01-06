@@ -9,6 +9,7 @@ trading_agent/
   agent/            # Decision engine rule-based e bandit adaptativo
   strategy/         # Detectores ICT
   execution/        # Broker paper e gerenciador de posições
+  execution/binance.py # Broker Binance Futures Testnet (ccxt)
   backtest/         # Runner de backtests
   data/             # Modelos SQLAlchemy e inicialização de banco
   services/         # WebSocket stream manager
@@ -29,6 +30,11 @@ Endpoints principais:
 - `POST /decide` para rodar rule-based ou adaptativo (`mode=adaptive`)
 - `POST /execute` para enviar decisão ao broker paper
 - `WS /stream` para sinais/posições em tempo real
+
+### Testnet Binance (ccxt)
+- Exporte credenciais de testnet: `BINANCE_API_KEY` e `BINANCE_API_SECRET`.
+- Envie `PUT /config` com `execution.broker="binance_testnet"` (ou `mode="testnet"`) para trocar o broker para Binance Futures Testnet.
+- O broker usa `ccxt.binanceusdm` em sandbox mode; tamanho/preço vêm do `Decision` (`symbol` e `entry`).
 
 ## Dashboard
 ```bash

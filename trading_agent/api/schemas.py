@@ -41,6 +41,7 @@ class ExecutionConfig(BaseModel):
     slippage_bps: float = 5
     order_type: Literal["market", "limit"] = "market"
     spread_limit_bps: float = 10
+    broker: Literal["paper", "binance_testnet"] = "paper"
 
 
 class AppConfig(BaseModel):
@@ -60,6 +61,8 @@ class SignalMetadata(BaseModel):
 class Decision(BaseModel):
     action: Literal["enter", "wait"]
     side: Literal["long", "short", "flat"] = "flat"
+    symbol: str | None = None
+    timeframe: str | None = None
     entry: float | None = None
     stop_loss: float | None = None
     take_profits: list[float] = Field(default_factory=list)

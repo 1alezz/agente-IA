@@ -69,6 +69,8 @@ class RuleBasedDecisionEngine:
         return Decision(
             action=action,
             side=side,
+            symbol=context.symbol,
+            timeframe=context.timeframe,
             entry=last_close,
             stop_loss=stop_loss,
             take_profits=[take_profit],

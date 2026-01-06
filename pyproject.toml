@@ -25,6 +25,7 @@ dependencies = [
     "celery",
     "python-dotenv",
     "typing-extensions",
+    "ccxt",
 ]
 
 [project.optional-dependencies]
