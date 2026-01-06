@@ -45,6 +45,34 @@ function ConfigForm() {
   const [risk, setRisk] = useState<number>(1)
   const [orderSizeMode, setOrderSizeMode] = useState<'risk' | 'fixed' | 'atr'>('risk')
   const [orderSizeValue, setOrderSizeValue] = useState<number>(0)
+  const [status, setStatus] = useState<string>('')
+
+  useEffect(() => {
+    axios
+      .get(`${API_BASE}/config`)
+      .then((res) => {
+        const cfg = res.data
+        if (cfg?.assets?.length) {
+          setAssets(cfg.assets.map((asset: any) => asset.symbol))
+        }
+        if (cfg?.execution?.mode) {
+          setMode(cfg.execution.mode)
+        }
+        if (cfg?.execution?.backtest_duration_minutes) {
+          setBacktestMinutes(cfg.execution.backtest_duration_minutes)
+        }
+        if (cfg?.risk?.risk_per_trade) {
+          setRisk(cfg.risk.risk_per_trade)
+        }
+        if (cfg?.risk?.order_size_mode) {
+          setOrderSizeMode(cfg.risk.order_size_mode)
+        }
+        if (cfg?.risk?.order_size_value !== undefined && cfg?.risk?.order_size_value !== null) {
+          setOrderSizeValue(cfg.risk.order_size_value)
+        }
+      })
+      .catch((err) => setStatus(`Erro ao carregar config: ${err?.message ?? 'erro'}`))
+  }, [])
 
   const payload = useMemo(
     () => ({
@@ -62,7 +90,13 @@ function ConfigForm() {
   )
 
   const handleSubmit = async () => {
-    await axios.put(`${API_BASE}/config`, payload)
+    setStatus('Salvando configuração...')
+    try {
+      await axios.put(`${API_BASE}/config`, payload)
+      setStatus('Configuração salva no backend.')
+    } catch (err: any) {
+      setStatus(`Falha ao salvar: ${err?.message ?? 'erro'}`)
+    }
   }
 
   return (
@@ -161,6 +195,7 @@ function ConfigForm() {
       >
         Salvar configuração
       </button>
+      {status && <div className="text-xs text-slate-300">{status}</div>}
     </div>
   )
 }
