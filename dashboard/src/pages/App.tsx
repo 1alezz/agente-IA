@@ -9,6 +9,11 @@ interface SignalPayload {
 
 const API_BASE = 'http://localhost:8000'
 
+async function safePost(path: string, data?: any) {
+  const url = `${API_BASE}${path}`
+  return axios.post(url, data ?? {})
+}
+
 function LiveSignals() {
   const [signals, setSignals] = useState<SignalPayload[]>([])
   useEffect(() => {
@@ -110,6 +115,52 @@ function Performance() {
   )
 }
 
+function Controls() {
+  const [status, setStatus] = useState<string>('')
+
+  const handle = async (label: string, path: string) => {
+    setStatus(`${label}...`)
+    try {
+      const res = await safePost(path)
+      setStatus(`${label} ok (${JSON.stringify(res.data)})`)
+    } catch (err: any) {
+      setStatus(`${label} falhou: ${err?.message ?? 'erro'}`)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => handle('Iniciar agente', '/agent/start')}
+          className="rounded-lg bg-emerald-500 p-2 font-semibold text-emerald-900 shadow hover:brightness-110"
+        >
+          Iniciar agente
+        </button>
+        <button
+          onClick={() => handle('Parar agente', '/agent/stop')}
+          className="rounded-lg bg-amber-500 p-2 font-semibold text-amber-900 shadow hover:brightness-110"
+        >
+          Pausar/Parar agente
+        </button>
+        <button
+          onClick={() => handle('Iniciar backtest', '/backtest/start')}
+          className="rounded-lg bg-sky-500 p-2 font-semibold text-sky-950 shadow hover:brightness-110"
+        >
+          Iniciar backtest
+        </button>
+        <button
+          onClick={() => handle('Pausar backtest', '/backtest/pause')}
+          className="rounded-lg bg-slate-500 p-2 font-semibold text-slate-900 shadow hover:brightness-110"
+        >
+          Pausar backtest
+        </button>
+      </div>
+      {status && <div className="text-xs text-slate-300">{status}</div>}
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <div className="min-h-screen bg-slate-950">
@@ -131,6 +182,9 @@ export default function App() {
         </Card>
         <Card title="Performance">
           <Performance />
+        </Card>
+        <Card title="Controles (Agente e Backtest)">
+          <Controls />
         </Card>
       </main>
     </div>
