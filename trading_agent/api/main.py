@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import random
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import FastAPI, WebSocket
@@ -8,6 +10,7 @@ from fastapi import FastAPI, WebSocket
 from trading_agent.agent.adaptive import AdaptivePolicy
 from trading_agent.agent.decision import DecisionContext, RuleBasedDecisionEngine
 from trading_agent.api.schemas import AppConfig, AssetConfig, Decision, ExecutionConfig, PerformanceDTO, RiskConfig, TradeDTO
+from trading_agent.backtest.runner import Backtester
 from trading_agent.data import database
 from trading_agent.execution.binance import BinanceBroker, BinanceCredentials
 from trading_agent.execution.broker import BrokerInterface, PaperBroker
@@ -29,6 +32,9 @@ def _default_config() -> AppConfig:
 
 
 current_config: AppConfig = _default_config()
+backtest_status: dict[str, Any] = {"running": False, "last_run": None}
+backtest_task: asyncio.Task | None = None
+performance_cache: list[PerformanceDTO] = []
 
 
 def build_broker(exec_config: ExecutionConfig) -> BrokerInterface:
@@ -97,7 +103,77 @@ async def get_trades() -> list[TradeDTO]:
 
 @app.get("/performance")
 async def get_performance() -> list[PerformanceDTO]:
-    return []
+    return performance_cache
+
+
+def _generate_candles(count: int, start_price: float = 100.0) -> list[Candle]:
+    candles: list[Candle] = []
+    price = start_price
+    now = datetime.utcnow()
+    for i in range(count):
+        drift = random.uniform(-0.5, 0.5)
+        open_price = price
+        close_price = max(1.0, price + drift)
+        high = max(open_price, close_price) + random.uniform(0.1, 0.6)
+        low = max(0.1, min(open_price, close_price) - random.uniform(0.1, 0.6))
+        candles.append(
+            Candle(
+                timestamp=now + timedelta(minutes=i),
+                open=open_price,
+                high=high,
+                low=low,
+                close=close_price,
+                volume=random.uniform(100, 500),
+            )
+        )
+        price = close_price
+    return candles
+
+
+async def _run_backtest() -> None:
+    global performance_cache, backtest_status
+    backtest_status = {"running": True, "last_run": datetime.utcnow().isoformat()}
+    duration = current_config.execution.backtest_duration_minutes or 120
+    backtester = Backtester()
+    metrics: list[PerformanceDTO] = []
+    for asset in current_config.assets:
+        if not asset.enabled:
+            continue
+        for timeframe in asset.timeframes:
+            candles = _generate_candles(duration)
+            result = backtester.run(asset.symbol, timeframe, candles)
+            metrics.append(
+                PerformanceDTO(
+                    symbol=asset.symbol,
+                    timeframe=timeframe,
+                    sharpe=result.sharpe,
+                    max_drawdown=0.0,
+                    winrate=0.0,
+                    expectancy=0.0,
+                    profit_factor=0.0,
+                )
+            )
+    performance_cache = metrics
+    backtest_status["running"] = False
+
+
+@app.post("/backtest/start")
+async def start_backtest() -> dict[str, Any]:
+    global backtest_task
+    if backtest_task and not backtest_task.done():
+        return {"status": "already_running"}
+    backtest_task = asyncio.create_task(_run_backtest())
+    return {"status": "started", "duration_minutes": current_config.execution.backtest_duration_minutes}
+
+
+@app.post("/backtest/pause")
+async def pause_backtest() -> dict[str, Any]:
+    global backtest_task
+    if backtest_task and not backtest_task.done():
+        backtest_task.cancel()
+        backtest_status["running"] = False
+        return {"status": "paused"}
+    return {"status": "not_running"}
 
 
 @app.websocket("/stream")

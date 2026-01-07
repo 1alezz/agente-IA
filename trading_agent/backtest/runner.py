@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from statistics import mean, pstdev
 from typing import Iterable, List
-
-import pandas as pd
 
 from trading_agent.agent.decision import DecisionContext, RuleBasedDecisionEngine
 from trading_agent.strategy.detectors import Candle
@@ -34,6 +33,12 @@ class Backtester:
                 equity.append(equity[-1] + pnl)
             else:
                 equity.append(equity[-1])
-        returns = pd.Series(equity).pct_change().dropna()
-        sharpe = (returns.mean() / returns.std()) * (252 ** 0.5) if not returns.empty else 0.0
+        returns = []
+        for i in range(1, len(equity)):
+            if equity[i - 1] != 0:
+                returns.append((equity[i] - equity[i - 1]) / equity[i - 1])
+        if returns and pstdev(returns) != 0:
+            sharpe = (mean(returns) / pstdev(returns)) * (252 ** 0.5)
+        else:
+            sharpe = 0.0
         return BacktestResult(trades=trades, equity_curve=equity, sharpe=float(sharpe))
