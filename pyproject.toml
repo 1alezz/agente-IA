@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agente-ia"
+version = "0.1.0"
+description = "Agente de IA para trading automatizado com FastAPI e dashboard"
+authors = [{name="Agente"}]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic>=2.6",
+    "sqlalchemy>=2.0",
+    "asyncpg",
+    "aiosqlite",
+    "alembic",
+    "httpx",
+    "numpy",
+    "pandas",
+    "ta",
+    "redis",
+    "celery",
+    "python-dotenv",
+    "typing-extensions",
+    "ccxt",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "httpx"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+asyncio_mode = "auto"
