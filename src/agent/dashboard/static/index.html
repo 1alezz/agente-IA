@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agente IA Trading</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 2rem;
+        background: #f7f7f8;
+        color: #1f2937;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+      }
+      .card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      }
+      h1 {
+        margin-bottom: 0.5rem;
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 1.1rem;
+      }
+      label {
+        display: block;
+        margin-top: 0.75rem;
+        font-weight: 600;
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        margin-top: 0.25rem;
+        padding: 0.5rem;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+      }
+      button {
+        margin-top: 1rem;
+        padding: 0.6rem 1rem;
+        border: none;
+        border-radius: 8px;
+        background: #2563eb;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #0f172a;
+      }
+      .log {
+        height: 280px;
+        overflow-y: auto;
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        font-family: "Courier New", monospace;
+        font-size: 0.85rem;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.75rem;
+        background: #e0f2fe;
+        color: #0369a1;
+        border-radius: 999px;
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.6rem;
+        background: #f1f5f9;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        margin: 0.25rem 0.25rem 0 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Agente IA Trading</h1>
+    <div class="status">● backend online</div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Configuração</h2>
+        <label>Ativos (ex: BTCUSDT,ETHUSDT)</label>
+        <input id="assets" placeholder="BTCUSDT,ETHUSDT" />
+
+        <label>Timeframes (ex: 5m,15m,1h)</label>
+        <input id="timeframes" placeholder="5m,15m,1h" />
+
+        <label>Risk per trade (%)</label>
+        <input id="risk" type="number" step="0.1" />
+
+        <label>Modo Testnet</label>
+        <select id="testnet">
+          <option value="true">Sim</option>
+          <option value="false">Não</option>
+        </select>
+
+        <label>API Key</label>
+        <input id="apiKey" type="password" />
+
+        <label>API Secret</label>
+        <input id="apiSecret" type="password" />
+
+        <button onclick="saveConfig()">Salvar configurações</button>
+        <button class="secondary" onclick="testConnection()">Testar conexão</button>
+        <p id="configStatus"></p>
+      </section>
+
+      <section class="card">
+        <h2>Estratégias ativadas</h2>
+        <div id="strategyList"></div>
+      </section>
+
+      <section class="card">
+        <h2>Logs em tempo real</h2>
+        <div class="log" id="log"></div>
+      </section>
+    </div>
+
+    <script>
+      const state = { config: null };
+
+      function renderStrategies(toggles) {
+        const container = document.getElementById('strategyList');
+        container.innerHTML = '';
+        Object.entries(toggles).forEach(([name, enabled]) => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.textContent = `${name}: ${enabled ? 'on' : 'off'}`;
+          container.appendChild(chip);
+        });
+      }
+
+      async function loadConfig() {
+        const response = await fetch('/api/config');
+        state.config = await response.json();
+        document.getElementById('risk').value = state.config.risk.risk_per_trade * 100;
+        document.getElementById('testnet').value = String(state.config.binance.testnet);
+        document.getElementById('assets').value = state.config.assets.map(a => a.symbol).join(',');
+        document.getElementById('timeframes').value =
+          state.config.assets[0]?.timeframes?.join(',') || '5m,15m,1h';
+        renderStrategies(state.config.strategy_toggles);
+      }
+
+      async function saveConfig() {
+        const assets = document.getElementById('assets').value
+          .split(',')
+          .map(item => item.trim())
+          .filter(Boolean);
+        const timeframes = document.getElementById('timeframes').value
+          .split(',')
+          .map(item => item.trim())
+          .filter(Boolean);
+        const payload = {
+          ...state.config,
+          assets: assets.map(symbol => ({ symbol, timeframes, enabled: true })),
+          risk: {
+            ...state.config.risk,
+            risk_per_trade: Number(document.getElementById('risk').value) / 100,
+          },
+          binance: {
+            api_key: document.getElementById('apiKey').value,
+            api_secret: document.getElementById('apiSecret').value,
+            testnet: document.getElementById('testnet').value === 'true',
+          },
+        };
+        const response = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        state.config = data;
+        renderStrategies(state.config.strategy_toggles);
+        document.getElementById('configStatus').textContent = 'Configurações atualizadas.';
+      }
+
+      async function testConnection() {
+        const response = await fetch('/api/test-connection', { method: 'POST' });
+        const data = await response.json();
+        document.getElementById('configStatus').textContent = data.detail || data.status;
+      }
+
+      async function fetchLogs() {
+        const response = await fetch('/api/logs');
+        const data = await response.json();
+        const container = document.getElementById('log');
+        container.innerHTML = data
+          .map(item => `[${item.timestamp}] ${item.level}: ${item.message}`)
+          .join('<br/>');
+        container.scrollTop = container.scrollHeight;
+      }
+
+      setInterval(fetchLogs, 2000);
+      loadConfig();
+      fetchLogs();
+    </script>
+  </body>
+</html>

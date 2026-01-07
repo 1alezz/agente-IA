@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import List
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from agent.config import AgentConfig, AssetConfig, BinanceSettings, RiskSettings, StrategyToggles
@@ -12,6 +14,10 @@ from agent.logging.logger import DashboardLogger
 app = FastAPI(title="Agente IA Trading Dashboard")
 logger = DashboardLogger("dashboard")
 logger.configure("INFO")
+
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 class AssetConfigModel(BaseModel):
@@ -57,35 +63,9 @@ class AgentConfigModel(BaseModel):
 state_config = AgentConfig()
 
 
-@app.get("/", response_class=HTMLResponse)
-def root() -> str:
-    return """
-    <html>
-        <head>
-            <title>Agente IA Trading</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 2rem; }
-                .log { border: 1px solid #ddd; padding: 1rem; height: 200px; overflow-y: scroll; }
-            </style>
-        </head>
-        <body>
-            <h1>Agente IA Trading Dashboard</h1>
-            <p>Status: <strong>online</strong></p>
-            <h2>Logs</h2>
-            <div class="log" id="log"></div>
-            <script>
-                async function fetchLogs() {
-                    const response = await fetch('/logs');
-                    const data = await response.json();
-                    const container = document.getElementById('log');
-                    container.innerHTML = data.map(item => `[${item.timestamp}] ${item.level}: ${item.message}`).join('<br/>');
-                }
-                setInterval(fetchLogs, 2000);
-                fetchLogs();
-            </script>
-        </body>
-    </html>
-    """
+@app.get("/")
+def root() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/health")
@@ -132,3 +112,23 @@ def test_connection() -> dict:
         raise HTTPException(status_code=400, detail="API key/secret não informadas")
     logger.log("info", "Teste de conexão solicitado.")
     return {"status": "pending", "detail": "Teste de conexão agendado."}
+
+
+@app.get("/api/config", response_model=AgentConfigModel)
+def api_get_config() -> AgentConfigModel:
+    return get_config()
+
+
+@app.post("/api/config", response_model=AgentConfigModel)
+def api_update_config(config: AgentConfigModel) -> AgentConfigModel:
+    return update_config(config)
+
+
+@app.get("/api/logs")
+def api_get_logs() -> list:
+    return get_logs()
+
+
+@app.post("/api/test-connection")
+def api_test_connection() -> dict:
+    return test_connection()

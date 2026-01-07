@@ -29,4 +29,4 @@ python src/main.py
 
 > Observação: utilize Python 3.9–3.12 para evitar incompatibilidades com algumas dependências.
 
-Acesse `http://localhost:8000` para visualizar o painel básico.
+Acesse `http://localhost:8000` para visualizar o painel básico (frontend e backend no mesmo servidor).
