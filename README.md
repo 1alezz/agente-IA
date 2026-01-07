@@ -44,6 +44,16 @@ npm install
 npm run dev
 ```
 
+### Servir dashboard pelo backend
+```bash
+cd dashboard
+npm install
+npm run build
+cd ..
+uvicorn trading_agent.api.main:app --reload
+```
+Quando `dashboard/dist` existir, o FastAPI serve a UI na raiz `/`.
+
 ## Backtest rápido
 ```python
 from trading_agent.backtest.runner import Backtester

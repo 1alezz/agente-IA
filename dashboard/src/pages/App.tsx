@@ -7,7 +7,7 @@ interface SignalPayload {
   payload: Record<string, unknown>
 }
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE ?? window.location.origin
 
 async function safePost(path: string, data?: any) {
   const url = `${API_BASE}${path}`
@@ -57,6 +57,12 @@ function ConfigForm() {
         }
         if (cfg?.execution?.mode) {
           setMode(cfg.execution.mode)
+        }
+        if (cfg?.execution?.api_key) {
+          setApiKey(cfg.execution.api_key)
+        }
+        if (cfg?.execution?.api_secret) {
+          setApiSecret(cfg.execution.api_secret)
         }
         if (cfg?.execution?.backtest_duration_minutes) {
           setBacktestMinutes(cfg.execution.backtest_duration_minutes)

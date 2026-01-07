@@ -3,9 +3,13 @@ from __future__ import annotations
 import asyncio
 import random
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from trading_agent.agent.adaptive import AdaptivePolicy
 from trading_agent.agent.decision import DecisionContext, RuleBasedDecisionEngine
@@ -21,6 +25,23 @@ from trading_agent.strategy.detectors import Candle
 app = FastAPI(title="Agente IA Trading")
 adaptive_policy = AdaptivePolicy()
 rule_engine = RuleBasedDecisionEngine()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:4173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+dashboard_dist = Path(__file__).resolve().parents[2] / "dashboard" / "dist"
+if dashboard_dist.exists():
+    app.mount("/assets", StaticFiles(directory=dashboard_dist / "assets"), name="assets")
 
 
 def _default_config() -> AppConfig:
@@ -58,6 +79,13 @@ async def startup() -> None:
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/")
+async def dashboard_index() -> FileResponse:
+    if dashboard_dist.exists():
+        return FileResponse(dashboard_dist / "index.html")
+    return FileResponse(Path(__file__).resolve().parents[2] / "README.md")
 
 
 @app.get("/config")
